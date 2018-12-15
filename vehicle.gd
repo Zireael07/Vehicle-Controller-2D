@@ -38,6 +38,8 @@ var steering = Vector2(0,0)
 #var target_motion = Vector2(0,0)
 var motion = Vector2(0,0)
 
+var dot
+
 # test
 #var test_spd = 80
 
@@ -61,6 +63,9 @@ func do_physics(gas, braking, left, right, delta):
 	
 	# Drag (0 means we will never slow down ever. Like being in space.)
 	_velocity *= drag_coefficient
+	
+	# needed for dot calculations
+	forward_vec = Vector2(0,-150)
 	
 #	# If we can drift
 #	if(can_drift):
@@ -127,6 +132,7 @@ func do_physics(gas, braking, left, right, delta):
 		get_node("wheel").set_rotation(steer_angle)
 		get_node("wheel2").set_rotation(steer_angle)
 	
+	dot = get_linear_velocity().rotated(-get_rotation()).dot(forward_vec)
 	
 	# Accelerate
 	if(gas):
@@ -138,6 +144,8 @@ func do_physics(gas, braking, left, right, delta):
 		
 		# fix the sliding (offset)
 		var angle_to = _velocity.angle_to(get_up())
+		if reverse and _velocity.length() > 5:
+			angle_to = _velocity.angle_to(-get_up())
 		_velocity = _velocity.rotated(angle_to)
 
 	# Break / Reverse
@@ -148,14 +156,11 @@ func do_physics(gas, braking, left, right, delta):
 		_velocity -= get_up() * acceleration * axis
 		#_velocity -= Vector2(0,-1).rotated(get_rotation()) * acceleration * axis
 		
-		# enable reversing
-		if _velocity.y > 0:
-			var angle_to = _velocity.angle_to(-get_up())
-			_velocity = _velocity.rotated(angle_to)
-		else:
-			# fix the sliding (offset)
-			var angle_to = _velocity.angle_to(get_up())
-			_velocity = _velocity.rotated(angle_to)
+		# fix the sliding (offset)
+		var angle_to = _velocity.angle_to(get_up())
+		if reverse or _velocity.length() < 5:
+			angle_to = _velocity.angle_to(-get_up())
+		_velocity = _velocity.rotated(angle_to)
 		
 		
 		
@@ -183,10 +188,9 @@ func do_physics(gas, braking, left, right, delta):
 	# rotating by -get_rot() because it was rotated by get_rot @ line 103
 	motion = get_linear_velocity().clamped(300).rotated(-get_rotation()) # yellow
 	#target_motion = motion+steering
-	forward_vec = Vector2(0,-150)
 	
-	#reverse
-	if (get_linear_velocity().rotated(-get_rotation()).dot(forward_vec) > 0):
+#	#reverse
+	if (dot < 0):
 		reverse = false
 	else:
 		reverse = true
